@@ -1,3 +1,7 @@
+.navbar {
+    padding: .5rem 0rem !important;
+}
+
 div.row {
 	max-height: 80%; 
 	white-space: nowrap; 
