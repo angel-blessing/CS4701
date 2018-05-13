@@ -2,7 +2,12 @@
     padding: .5rem 0rem !important;
 }
 
-div.row {
+#step3 div.row {
+    margin-top: 2% !important;
+    white-space: normal !important;
+}
+
+#step1 div.row, #step2 div.row{
 	max-height: 80%; 
 	white-space: nowrap; 
 	overflow-y: scroll;

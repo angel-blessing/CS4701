@@ -17,7 +17,7 @@
 			</div>
 		</div>
 	</div>
-	<div class="row">
+	<div class="row" id="step1">
 		<div class="col-sm-2 col-md-2">
 		</div>
 		<div class="col-sm-8 col-md-8">
@@ -51,6 +51,14 @@
 		<div class="col-sm-2 col-md-2">
 		</div>
 	</div>
+	<div class="row" id="step3" style="margin-top: 2%; white-space: normal;">
+		<div class="col-sm-2 col-md-2">
+		</div>
+		<div class="col-sm-8 col-md-8" id="questionarea">
+		</div>
+		<div class="col-sm-2 col-md-2">
+		</div>
+	</div>
 </div>
 <script>
 	$(document).ready(function() {
@@ -62,6 +70,7 @@
 		if($('#inputdoc')[0].value === undefined || $('#inputdoc')[0].value === '') {
 			return;
 		}
+		$('#questionarea').empty();
 		let params = {}
 		params["data"] = $('#inputdoc')[0].value;
 		$.get('/splitDoc', params, function(result) {
@@ -73,7 +82,13 @@
 			let paragraphs = result['paragraphs'];
 			let stringbuilder = "";
 			let stringfornav = "<nav class=\"navbar navbar-light bg-light\"><nav class=\"nav nav-pills flex-column\">";
+			let outerdiv = $("<div>").addClass("accordion").attr("id","accordion");
+
+			let answerbtn = $("<button>").attr("type", "button").attr("id", "answerbtn").attr("onclick", 'submit()').addClass("btn btn-secondary").text("answer now"), resetbtn = $("<button>").attr("type", "button").attr("id", "resetbtn").attr("onclick", 'resetqa()').addClass("btn btn-secondary reset").text("reset");
+			let uppderdiv = $("<div>").addClass("row").append($("<div>").addClass("col-sm-12 col-md-12").append($("<div>").addClass("btn-group").attr("role", "group").append(answerbtn).append(resetbtn)));
+			outerdiv.append(uppderdiv);
 			for(let i = 0; i < paragraphs.length; i++) {
+				let carddiv = $("<div>").addClass("card");
 				stringfornav += "<a class=\"nav-link\" href=\"#";
 				stringfornav += "p" + i;
 				stringfornav += "\">";
@@ -84,16 +99,73 @@
 				stringbuilder += "\"><div class=\"form-group\"><textarea readonly class=\"form-control\" rows=\"8\" style=\"overflow-y:hidden;\">";
 				stringbuilder += paragraphs[i];
 				stringbuilder += "</textarea></div></form>";
+
+				let headname = "heading" + i, bodyname = "collapse" + i;
+				let h5 = $("<h5>").addClass("mb-0").append($("<button>").addClass("btn btn-link").attr("type", "button").attr("data-toggle", "collapse").attr("data-target", "#"+bodyname).attr("aria-expanded", false).attr("aria-controls", bodyname).text("Paragraph " + (i + 1)));
+				let headelement = $("<div>").addClass("card-header").attr("id", headname).append(h5);
+				let bodyelement = $("<div>").attr("id", bodyname).addClass("collapse").attr("aria-labelledby", headname).attr("data-parent", "#accordion");
+				let innerbody = $("<div>").addClass("card-body");
+				for(let j = 0; j < 5; j++) {
+					let name1 = "p" + i + "a" + j, name2 = "p" + i + "q" + j; 
+					let rowdiv = $("<div>").addClass("row");
+					let col1div = $("<div>").addClass("col-sm-4 col-md-4"), col2div = $("<div>").addClass("col-sm-8 col-md-8");
+					let c11 = $("<label>").attr("for", "#" + name1).text("Answer"), c12 = $("<input>").attr("disabled", true).attr("id", name1);
+					let c21 = $("<label>").attr("for", "#" + name2).text("Question"), c22 = $("<input>").attr("type", "text").attr("id", name2).css({"width": "80%"});
+					col1div.append(c11).append(c12);
+					col2div.append(c21).append(c22);
+					rowdiv.append(col1div).append(col2div);
+					innerbody.append(rowdiv);
+				}
+				bodyelement.append(innerbody);
+				carddiv.append(headelement).append(bodyelement);
+				outerdiv.append(carddiv);
 			}
-			stringfornav += "</nav></nav>"
+			stringfornav += "</nav></nav>";
 			$('#navbar').append(stringfornav);
 			$('#paragraphs').append(stringbuilder);
+			$("#questionarea").append(outerdiv);
+
+			$("#collapse"+0).addClass("show");
+			for(let i = 1; i < paragraphs.length; i++) {
+				$("#answerbtn"+i).hide();
+			}
 		});
 	});
 	$('#reset').click(function() {
 		$('#inputdoc')[0].value = '';
 		$('#navbar').empty();
 		$('#paragraphs').empty();
+		$('#questionarea').empty();
 	});
+
+	function resetqa() {
+		let target = $("#accordion").find("div.collapse.show")[0];
+		let elements = $(target).find("input");
+		elements.each(function(i) {
+			elements[i].value = '';
+		});
+	};
+
+	function submit() {
+		let paragraphs = [], qas = [];
+		let target = $("#accordion").find("div.collapse.show")[0];
+		let id = target.id.substring(8);
+		let text = $("#p"+id).find("textarea")[0].value;
+		for(let i = 0; i < 5; i++) {
+			let question = $("#p"+id+"q"+i)[0].value;
+			let celle = {"question": question, "id": i};
+			qas.push(celle);
+		}
+		let cell = {"context": text, "qas": qas};
+		paragraphs.push(cell);
+		let params = {"paragraphs": JSON.stringify(paragraphs), "csrfmiddlewaretoken": '{{ csrf_token }}'}
+		$.post('/getAnswer', params, function(result) {
+			let answers = JSON.parse(result['result']);
+			console.log(answers);
+			for(let i = 0; i < 5; i++) {
+				$("#p"+id+"a"+i)[0].value = answers[i];
+			}
+		});
+	}
 </script>
 {% endblock %}
